@@ -7,10 +7,6 @@ A free web app that reviews resumes. Upload a resume (PDF or DOCX), optionally p
 - Scores out of 100 for **formatting**, **clarity**, and **impact**, plus an **overall** score
 - 2-4 strengths and 3-5 specific, actionable suggestions, grounded in the resume text
 - With a job description: **keyword match** score, **match percentage**, **semantic similarity**, and a **gap analysis** paragraph
-- **Live agent terminal** — the LLM's output streams token-by-token as it works, including validation and retry events
-- **Interactive score cards** — hover the `?` on any score to see the rubric behind it
-- **Score history** — past reviews are tracked in-session with green/red deltas vs the previous run
-- **Follow-up chat** — after a review, ask questions about your resume and get grounded, streaming answers
 
 ## How it works
 
@@ -19,8 +15,6 @@ A free web app that reviews resumes. Upload a resume (PDF or DOCX), optionally p
 3. **Retrieve** — chunks are stored in a persistent ChromaDB index (`.chroma/`). The most relevant JD chunks (similarity >= 0.30) are retrieved for each resume chunk and added as LLM context. This is the retrieval step in the RAG pipeline.
 4. **Score** — the LLM (Groq, `llama-3.3-70b-versatile`) evaluates the resume against a fixed rubric and must reply with a single JSON object, validated against a Pydantic schema. Invalid replies are fed back with the error and retried (up to 3 attempts).
 5. **Match** — with a JD, whole-document cosine similarity is rescaled from the 0.30-0.75 band into a 0-100 match percentage, and a second LLM call writes a grounded gap analysis.
-
-Everything the LLM produces is streamed live into a terminal panel, so you can watch the agent work. After the review, a follow-up chat answers questions about your resume using the same review as context.
 
 ```
 Upload -> Parse -> Embed -> Retrieve (JD) -> Score -> Report
@@ -97,8 +91,7 @@ embeddings.py     Chunking, embeddings, cosine similarity
 retriever.py      ChromaDB persistent index + top-k retrieval
 evaluation.py     Rubric prompt, Pydantic validation, retry loop
 match_score.py    Match percentage + gap analysis
-chat.py           Follow-up chat grounded in the review
-llm.py            API key resolution + Groq client (streaming)
+llm.py            API key resolution + Groq client
 config.py         Model names + settings (chunk size, top-k, ...)
 theme.py          Dark UI theme + HTML helpers
 tests/            Phase-by-phase test scripts
@@ -110,4 +103,4 @@ sample_resumes/   Sample PDF/DOCX resume
 - ATS compatibility checker
 - Cover-letter generator
 - Multi-resume comparison
-- Customizable rubric weighting / industry presets
+- Score history tracking

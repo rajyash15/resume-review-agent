@@ -97,19 +97,6 @@ div.stButton > button[kind="secondary"]:hover { background:#27272a; box-shadow:n
 /* custom components */
 .wmd-eyebrow { font-family:var(--wmd-mono); font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; color:var(--wmd-green); margin:2.5rem 0 .5rem; }
 
-.wmd-tip { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; margin-left:.4rem;
-  border-radius:50%; border:1px solid rgba(255,255,255,.3); color:var(--wmd-muted); font-size:.6rem;
-  font-family:var(--wmd-mono); cursor:help; vertical-align:middle; line-height:1; }
-
-.wmd-terminal { background:var(--wmd-alt); border:1px solid var(--wmd-border); border-radius:4px;
-  padding:.75rem 1rem; font-family:var(--wmd-mono); font-size:.8rem; color:var(--wmd-green);
-  white-space:pre-wrap; max-height:340px; overflow-y:auto; }
-
-.wmd-delta { font-family:var(--wmd-mono); font-weight:700; }
-.wmd-delta.up { color:var(--wmd-green); }
-.wmd-delta.down { color:var(--wmd-red); }
-.wmd-delta.same { color:var(--wmd-muted); }
-
 .wmd-hero h1 { font-size:clamp(2rem,5vw,3.4rem); font-weight:700; letter-spacing:-.03em; line-height:1.1; margin:.75rem 0 1rem; }
 .wmd-shimmer {
   background:linear-gradient(110deg,#00c758 40%,#eafff2 50%,#00c758 60%);
@@ -184,13 +171,7 @@ def brackets() -> str:
     )
 
 
-def score_card(
-    label: str,
-    value: int | None,
-    accent: str = ACCENT_GREEN,
-    note: str | None = None,
-    tip: str | None = None,
-) -> None:
+def score_card(label: str, value: int | None, accent: str = ACCENT_GREEN, note: str | None = None) -> None:
     shown = "N/A" if value is None else f"{value}"
     pct = value if value is not None else 0
     note_html = ""
@@ -199,12 +180,9 @@ def score_card(
             f'<div style="color:#9f9fa9;font-size:.8rem;margin-top:.4rem">'
             f"{_html.escape(note)}</div>"
         )
-    tip_html = (
-        f' <span class="wmd-tip" title="{_html.escape(tip)}">?</span>' if tip else ""
-    )
     html(
         f'<div class="wmd-card">{brackets()}'
-        f'<div class="wmd-card-label">{_html.escape(label)}{tip_html}</div>'
+        f'<div class="wmd-card-label">{_html.escape(label)}</div>'
         f'<div class="wmd-card-score" style="color:{accent}">{shown}'
         f'<span style="font-size:1rem;color:#9f9fa9">/100</span></div>'
         f'<div class="wmd-bar"><div class="wmd-bar-fill" style="width:{pct}%;'

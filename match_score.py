@@ -12,10 +12,8 @@ rubric forces specific, actionable suggestions in the same LLM call as scoring.
 
 from __future__ import annotations
 
-from typing import Callable
-
 from embeddings import cosine_similarity, embed_text
-from llm import get_llm, stream_or_invoke
+from llm import get_llm
 
 GAP_ANALYSIS_PROMPT = """You are an expert recruiter comparing a candidate's resume against a job description.
 
@@ -44,12 +42,7 @@ def match_percentage(resume_text: str, jd_text: str) -> int:
     return pct
 
 
-def gap_analysis(
-    resume_text: str,
-    jd_text: str,
-    match: int,
-    on_chunk: Callable[[str], None] | None = None,
-) -> str:
+def gap_analysis(resume_text: str, jd_text: str, match: int) -> str:
     """Ask the LLM for a grounded gap analysis paragraph."""
     user_prompt = (
         f"Semantic match between resume and job description: {match}%\n\n"
@@ -58,24 +51,21 @@ def gap_analysis(
         f"Write the gap analysis."
     )
     model = get_llm()
-    content = stream_or_invoke(
-        model, [("system", GAP_ANALYSIS_PROMPT), ("human", user_prompt)], on_chunk
+    response = model.invoke(
+        [("system", GAP_ANALYSIS_PROMPT), ("human", user_prompt)]
     )
+    content = response.content if hasattr(response, "content") else str(response)
     return content.strip()
 
 
-def analyze_match(
-    resume_text: str,
-    jd_text: str,
-    on_chunk: Callable[[str], None] | None = None,
-) -> dict:
+def analyze_match(resume_text: str, jd_text: str) -> dict:
     """Compute the full match result for a resume + job description.
 
     Returns {"match_percentage": int, "semantic_similarity": float, "gap_analysis": str}.
     """
     similarity = semantic_similarity(resume_text, jd_text)
     pct = match_percentage(resume_text, jd_text)
-    analysis = gap_analysis(resume_text, jd_text, pct, on_chunk)
+    analysis = gap_analysis(resume_text, jd_text, pct)
     return {
         "match_percentage": pct,
         "semantic_similarity": round(similarity, 4),
