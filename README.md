@@ -28,13 +28,13 @@ API keys go in a `.env` file (see `.env.example`). They are never committed.
 
 ## Roadmap
 
-- Phase 1 — Document processing (PDF/DOCX → clean text + sections)
-- Phase 2 — Embeddings
-- Phase 3 — Vector DB + retrieval (ChromaDB)
-- Phase 4 — Structured evaluation (LLM + Pydantic)
-- Phase 5 — Job-description match score
-- Phase 6 — Suggestions engine
-- Phase 7 — Streamlit UI
-- Phase 8 — Deployment (Streamlit Community Cloud)
-- Phase 9 — Evaluation
-- Phase 10 — README + CV packaging
+- [x] Phase 1 — Document processing (PDF/DOCX → clean text + sections)
+- [x] Phase 2 — Embeddings
+- [x] Phase 3 — Vector DB + retrieval (ChromaDB)
+- [x] Phase 4 — Structured evaluation (LLM + Pydantic)
+- [x] Phase 5 — Job-description match score
+- [x] Phase 6 — Suggestions engine
+- [x] Phase 7 — Streamlit UI
+- [ ] Phase 8 — Deployment (Streamlit Community Cloud)
+- [ ] Phase 9 — Evaluation
+- [ ] Phase 10 — README + CV packaging
