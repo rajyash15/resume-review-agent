@@ -1,51 +1,101 @@
 # Resume Review Agent
 
-A free web app that reviews your resume: upload a resume (PDF/DOCX), optionally
-paste a job description, and get structured scores (formatting, clarity,
-impact, keyword match) plus specific improvement suggestions — in ~30 seconds.
+AI resume review, powered by RAG — upload a resume, get a rubric-based score and actionable feedback in ~30 seconds.
 
-## Stack
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
+[![LLM](https://img.shields.io/badge/LLM-Groq-orange)](https://groq.com)
 
-Python, LangChain, sentence-transformers (all-MiniLM-L6-v2), ChromaDB,
-Groq/Gemini APIs, Pydantic, Streamlit.
+A free web app that analyzes resumes (PDF or DOCX) against a rubric and — optionally — a target job description.
 
-## Concepts implemented (as the project is built)
+## Features
 
-Document processing, embeddings, vector search, RAG, prompt engineering,
-structured output, evaluation.
+- **Rubric-based scoring** — structured 0–100 scores for formatting, clarity, and impact, plus an overall score.
+- **Job-match analysis** — when a job description is provided, get a match percentage, semantic similarity score, and keyword match, with a grounded gap-analysis paragraph.
+- **Retrieval-augmented evaluation** — relevant JD sections are retrieved from a vector store and cited in the review, reducing hallucination.
+- **Specific, actionable feedback** — targeted improvement suggestions and a strengths list, not generic advice.
+- **Fast and free** — ~30-second turnarounds on a hosted Groq LLM; local embeddings need no API key.
+- **Validated structured output** — Pydantic-typed LLM output, validated and retried on failure.
 
-## Run locally
+## How it works
+
+The app parses the uploaded document into plain text, chunks and embeds it, then (optionally) retrieves only the job-description chunks most relevant to each resume section. The LLM reviews each section against a scoring rubric and emits a structured, validated JSON report.
+
+```
+Upload → Parse → Chunk → Embed → Retrieve (JD) → Rubric-Score → Validate → Report
+```
+
+## Screenshot
+
+![Demo](docs/screenshot.png)
+
+*Add a screenshot of the results view here.*
+
+## Built with
+
+| Layer | Tech |
+|---|---|
+| UI | Streamlit |
+| Orchestration / LLM | LangChain + Groq (`llama-3.3-70b-versatile`) |
+| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (local, no API key) |
+| Retrieval | ChromaDB vector store |
+| Document parsing | `pypdf`, `python-docx` |
+| Structured output | Pydantic with validation + retry |
+| Config / secrets | `python-dotenv`, Streamlit secrets |
+
+## Getting started (local)
 
 ```bash
 python -m venv .venv
-.venv\Scripts\Activate.ps1        # Windows
+
+# Windows
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
-# copy .env.example to .env and add GROQ_API_KEY
+```
+
+1. Copy `.env.example` to `.env` and add your `GROQ_API_KEY`.
+2. Launch the app:
+
+```bash
 .venv\Scripts\python -m streamlit run app.py
 ```
 
-API keys go in a `.env` file (see `.env.example`). They are never committed.
+The embedding model (`all-MiniLM-L6-v2`) downloads automatically on first run.
 
-## Deployment (Streamlit Community Cloud)
+## Deployment
 
-1. Push this repo to GitHub.
-2. Go to https://share.streamlit.io (or the Streamlit Community Cloud dashboard)
-   and create a new app from that GitHub repo.
-3. In **Advanced settings → Secrets**, add:
-   `GROQ_API_KEY = "your_key_here"` (this becomes available to the app as a
-   secret; it is never stored in the repo).
-4. Deploy. The embedding model downloads on first use; the first review may be
-   slow while it loads.
+1. Push the repo to GitHub.
+2. On [Streamlit Community Cloud](https://streamlit.io/cloud), click **New app**, select the repo, and set the main file to `app.py`.
+3. Add the `GROQ_API_KEY` secret under **Advanced settings → Secrets**.
+4. Deploy. The embedding model is bundled automatically at deploy time.
+
+## Project structure
+
+```
+app.py                 Streamlit entry point (UI, session state, orchestration)
+resume_parser.py       PDF / DOCX → plain text extraction
+embeddings.py          Text chunking + local embedding model
+retriever.py           ChromaDB vector store and JD retrieval
+evaluation.py          Rubric prompt, structured scoring, output validation
+match_score.py         Job-match %, semantic similarity, gap analysis
+llm.py                 LangChain + Groq client wrapper
+config.py              Settings, model names, and constants
+theme.py               UI styling helpers
+tests/                 Per-phase pytest-style verification scripts
+sample_resumes/        Sample resumes of varying quality for testing
+```
+
+## Evaluation
+
+The project ships with sample resumes of varying quality to sanity-check that scoring ranks them in the expected order, and Phase 9 verifies consistency by scoring the same resume repeatedly and confirming the results are stable.
 
 ## Roadmap
 
-- [x] Phase 1 — Document processing (PDF/DOCX → clean text + sections)
-- [x] Phase 2 — Embeddings
-- [x] Phase 3 — Vector DB + retrieval (ChromaDB)
-- [x] Phase 4 — Structured evaluation (LLM + Pydantic)
-- [x] Phase 5 — Job-description match score
-- [x] Phase 6 — Suggestions engine
-- [x] Phase 7 — Streamlit UI
-- [x] Phase 8 — Deployment (Streamlit Community Cloud)
-- [ ] Phase 9 — Evaluation
-- [ ] Phase 10 — README + CV packaging
+- **ATS compatibility checker** — flag formatting that confuses applicant tracking systems.
+- **Cover-letter generator** — draft a tailored cover letter from the same match analysis.
+- **Multi-resume comparison** — compare candidates side by side against one JD.
+- **Feedback memory** — let users track score improvements across revisions.
