@@ -1,4 +1,4 @@
-"""Resume Review Agent — Streamlit web UI (Phase 7).
+"""Resume Review Agent — Streamlit web UI (Phase 7, wemakedevs-style redesign).
 
 Run with:  streamlit run app.py
 
@@ -16,25 +16,42 @@ import streamlit as st
 from evaluation import review_resume
 from match_score import analyze_match
 from resume_parser import parse_resume
+from theme import (
+    ACCENT_PURPLE,
+    CATEGORY_ACCENTS,
+    brackets,
+    divider,
+    eyebrow,
+    footer,
+    html,
+    inject_theme,
+    item_list,
+    ring,
+    score_card,
+)
 
 ALLOWED_SUFFIXES = (".pdf", ".docx")
 
-st.set_page_config(page_title="Resume Review Agent", layout="centered")
+st.set_page_config(page_title="Resume Review Agent", layout="wide")
+inject_theme()
 
-st.title("Resume Review Agent")
-st.caption(
-    "Upload a resume (PDF or DOCX), optionally paste a job description, and get "
-    "rubric-based scores plus specific, actionable suggestions."
+html(
+    '<div class="wmd-hero">'
+    '<div class="wmd-eyebrow" style="margin-top:0">AI Resume Review</div>'
+    '<h1>Build a resume that <span class="wmd-shimmer">ships.</span></h1>'
+    '<p style="color:#9f9fa9;max-width:34rem;font-size:1.05rem;line-height:1.6">'
+    "Upload your resume, optionally paste a job description, and get rubric-based "
+    "scores, strengths and specific fixes in ~30 seconds.</p></div>"
 )
 
-uploaded = st.file_uploader("Your resume", type=["pdf", "docx"])
+uploaded = st.file_uploader("Resume (PDF or DOCX)", type=["pdf", "docx"])
 jd_text = st.text_area(
     "Job description (optional)",
-    height=180,
+    height=160,
     placeholder="Paste the job description here to also get a match score and keyword analysis...",
 )
 
-if st.button("Review My Resume", type="primary"):
+if st.button("Review My Resume", type="primary", use_container_width=True):
     if uploaded is None:
         st.error("Please upload a resume file first.")
         st.stop()
@@ -65,49 +82,58 @@ if st.button("Review My Resume", type="primary"):
 
     st.success("Review complete")
 
-    # --- Overall score + match ---
-    col_overall, col_match = st.columns(2)
-    col_overall.metric("Overall score", f"{review.overall_score}/100")
-    col_overall.progress(review.overall_score / 100)
-    if match is not None:
-        col_match.metric("Job match", f"{match['match_percentage']}%")
-        col_match.progress(match["match_percentage"] / 100)
-    else:
-        col_match.metric("Job match", "Not provided")
-        col_match.caption("Paste a job description to get a match score.")
-
-    # --- Category scores ---
-    st.subheader("Category scores")
-    cols = st.columns(4)
-    category_scores = [
-        ("Formatting", review.formatting_score),
-        ("Clarity", review.clarity_score),
-        ("Impact", review.impact_score),
-        ("Keyword match", review.keyword_match_score),
-    ]
-    for col, (label, value) in zip(cols, category_scores):
-        if value is None:
-            col.metric(label, "N/A")
-            col.caption("Requires a job description")
+    # ---- 01 / Score ----
+    eyebrow("01", "Score")
+    col_ring, col_match = st.columns([1, 2])
+    with col_ring:
+        ring(review.overall_score, "Overall Score")
+    with col_match:
+        if match is not None:
+            pct = match["match_percentage"]
+            html(
+                f'<div class="wmd-card">{brackets()}'
+                f'<div class="wmd-card-label">Job Match</div>'
+                f'<div class="wmd-card-score" style="color:{ACCENT_PURPLE}">{pct}'
+                f'<span style="font-size:1rem;color:#9f9fa9">%</span></div>'
+                f'<div class="wmd-bar"><div class="wmd-bar-fill" style="width:{pct}%;'
+                f'background:linear-gradient(90deg,{ACCENT_PURPLE},{ACCENT_PURPLE})"></div></div>'
+                f'</div>'
+            )
         else:
-            col.metric(label, f"{value}/100")
-            col.progress(value / 100)
+            score_card(
+                "Job Match",
+                None,
+                accent=ACCENT_PURPLE,
+                note="Paste a job description to get a match score.",
+            )
 
-    # --- Strengths ---
-    st.subheader("Strengths")
-    for item in review.strengths:
-        st.markdown(f"- {item}")
+    # ---- 02 / Breakdown ----
+    eyebrow("02", "Breakdown")
+    cols = st.columns(4)
+    category_data = [
+        ("Formatting", review.formatting_score, "formatting"),
+        ("Clarity", review.clarity_score, "clarity"),
+        ("Impact", review.impact_score, "impact"),
+        ("Keyword Match", review.keyword_match_score, "keyword_match"),
+    ]
+    for col, (label, value, key) in zip(cols, category_data):
+        with col:
+            note = "Requires a job description" if value is None else None
+            score_card(label, value, accent=CATEGORY_ACCENTS[key], note=note)
 
-    # --- Suggestions ---
-    st.subheader("Improvement suggestions")
-    for item in review.improvement_suggestions:
-        st.markdown(f"- {item}")
+    # ---- 03 / Strengths ----
+    eyebrow("03", "Strengths")
+    item_list(review.strengths, variant="", mark="+")
 
-    # --- Match analysis ---
+    # ---- 04 / Improvement Suggestions ----
+    eyebrow("04", "Improvement Suggestions")
+    item_list(review.improvement_suggestions, variant="orange", mark="->")
+
+    # ---- 05 / How you match ----
     if match is not None:
-        st.subheader("How you match the job description")
-        st.markdown(match["gap_analysis"])
+        eyebrow("05", "How You Match")
+        item_list([match["gap_analysis"]], variant="purple", mark="*")
         st.caption(f"Semantic similarity score: {match['semantic_similarity']:.3f}")
 
-st.markdown("---")
-st.caption("Built with LangChain, sentence-transformers, ChromaDB, Groq, Pydantic and Streamlit.")
+    divider()
+    footer("Built with LangChain · sentence-transformers · ChromaDB · Groq · Streamlit")
