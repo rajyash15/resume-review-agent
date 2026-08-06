@@ -16,15 +16,39 @@ load_dotenv()
 import config
 
 
+def get_api_key(name: str) -> str:
+    """Look up an API key, checking (in order) Streamlit secrets then env vars.
+
+    On Streamlit Community Cloud the key lives in the app's Secrets settings
+    (`st.secrets`); locally it lives in `.env` (loaded into os.environ by
+    dotenv). Accessing `st.secrets` outside a running Streamlit script raises,
+    so it is guarded.
+    """
+    key = ""
+    try:
+        import streamlit as st
+
+        try:
+            key = st.secrets.get(name, "")
+        except Exception:
+            key = ""
+    except Exception:
+        key = ""
+    if not key:
+        key = os.environ.get(name, "")
+    return (key or "").strip()
+
+
 def get_llm() -> Any:
     """Return a LangChain chat model for the configured provider."""
     provider = config.LLM_PROVIDER.lower()
 
     if provider == "groq":
-        api_key = (os.environ.get("GROQ_API_KEY") or "").strip()
+        api_key = get_api_key("GROQ_API_KEY")
         if not api_key:
             raise RuntimeError(
-                "GROQ_API_KEY is not set. Add it to the .env file (see .env.example)."
+                "GROQ_API_KEY is not set. Add it to the .env file locally, or to "
+                "Streamlit Cloud Secrets when deployed (see README Phase 8)."
             )
         from langchain_groq import ChatGroq
 
