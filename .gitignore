@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Secrets - NEVER commit these
+.env
+.streamlit/secrets.toml
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ChromaDB local vector database
+.chroma/
+
+# Sample uploads / test artifacts
+uploads/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
