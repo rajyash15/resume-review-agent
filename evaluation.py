@@ -12,13 +12,13 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, Field, ValidationError
 
 import config
 from embeddings import chunk_text
-from llm import get_llm
+from llm import get_llm, stream_or_invoke
 from retriever import index_text, retrieve_top_k
 
 
@@ -92,11 +92,20 @@ def _extract_json(content: str) -> dict[str, Any]:
     raise ValueError("unbalanced JSON object in response")
 
 
-def review_resume(resume_text: str, jd_text: str | None = None, max_attempts: int = 3) -> ResumeReview:
+def review_resume(
+    resume_text: str,
+    jd_text: str | None = None,
+    max_attempts: int = 3,
+    on_chunk: Callable[[str], None] | None = None,
+    on_event: Callable[[str], None] | None = None,
+) -> ResumeReview:
     """Score a resume (and optionally its fit against a job description).
 
     When `jd_text` is given, the most relevant JD chunks are retrieved by
     semantic search (the "R" in RAG) and included as context for scoring.
+
+    `on_chunk` is called with each token as the LLM streams it (live terminal),
+    and `on_event` with status strings (attempt / validation / retry).
     """
     has_jd = bool(jd_text and jd_text.strip())
 
@@ -121,20 +130,25 @@ def review_resume(resume_text: str, jd_text: str | None = None, max_attempts: in
     model = get_llm()
 
     for attempt in range(max_attempts):
-        response = model.invoke(messages)
-        content = response.content if hasattr(response, "content") else str(response)
+        if on_event:
+            on_event(f"attempt {attempt + 1}/{max_attempts}")
+        content = stream_or_invoke(model, messages, on_chunk)
 
         try:
             data = _extract_json(content)
             review = ResumeReview.model_validate(data)
             if not has_jd:
                 review.keyword_match_score = None
+            if on_event:
+                on_event("output validated")
             return review
         except (json.JSONDecodeError, ValueError, ValidationError) as exc:
             if attempt == max_attempts - 1:
                 raise RuntimeError(
                     f"LLM returned invalid output after {max_attempts} attempts: {exc}"
                 ) from exc
+            if on_event:
+                on_event(f"invalid output ({type(exc).__name__}) — retrying")
             messages.append(("assistant", content))
             messages.append(
                 (

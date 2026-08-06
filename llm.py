@@ -7,7 +7,7 @@ Only Groq is wired up for now, but the provider is chosen in one place
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Callable
 
 from dotenv import load_dotenv
 
@@ -59,3 +59,39 @@ def get_llm() -> Any:
         )
 
     raise ValueError(f"Unsupported LLM_PROVIDER: {config.LLM_PROVIDER}")
+
+
+def stream_or_invoke(
+    model: Any,
+    messages: list[tuple[str, str]],
+    on_chunk: Callable[[str], None] | None = None,
+) -> str:
+    """Send `messages` to `model`, streaming the reply token-by-token.
+
+    Each token is passed to `on_chunk` as soon as it arrives so the UI can show
+    a live terminal. When `on_chunk` is None (or streaming is unsupported) the
+    model is invoked as a single call and the full text is returned.
+    """
+    if on_chunk is None:
+        response = model.invoke(messages)
+        return response.content if hasattr(response, "content") else str(response)
+
+    streamer = getattr(model, "stream", None)
+    if streamer is None:
+        response = model.invoke(messages)
+        content = response.content if hasattr(response, "content") else str(response)
+        on_chunk(content)
+        return content
+
+    parts: list[str] = []
+    try:
+        for chunk in streamer(messages):
+            piece = chunk.content if hasattr(chunk, "content") else str(chunk)
+            parts.append(piece)
+            on_chunk(piece)
+    except NotImplementedError:
+        response = model.invoke(messages)
+        content = response.content if hasattr(response, "content") else str(response)
+        on_chunk(content)
+        return content
+    return "".join(parts)
