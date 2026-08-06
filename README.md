@@ -1,103 +1,102 @@
 # Resume Review Agent
 
-A free web app that reviews resumes and returns rubric-based scores, strengths, and specific, actionable improvement suggestions.
+A free web app that reviews resumes. Upload a resume (PDF or DOCX), optionally paste a job description, and get rubric-based scores, strengths, and specific improvement suggestions — in about 30 seconds.
 
 ## What it does
 
-Upload a resume (PDF or DOCX) and optionally paste a job description. The app scores the resume out of 100 on formatting, clarity, and impact, shows an overall score, lists what the resume does well, and gives specific things to fix. When a job description is provided it also returns a keyword match score, a match percentage, a semantic similarity value, and a short gap analysis naming what the resume is missing for that role. A full review takes about 30 seconds.
+- Scores the resume out of 100 for **formatting**, **clarity**, and **impact**, plus an **overall** score
+- Lists 2-4 strengths and 3-5 specific, actionable suggestions, grounded in the resume text
+- With a job description: a **keyword match** score, a **match percentage**, **semantic similarity**, and a short **gap analysis** paragraph
 
 ## How it works
 
-1. The uploaded file is parsed into clean plain text. PDF and DOCX are both supported. Common resume sections (summary, experience, education, skills, projects, certifications, languages) are detected with heading patterns; content before the first heading is treated as the header.
-2. If a job description is pasted, it is split into overlapping text chunks, embedded locally with sentence-transformers, and stored in a persistent ChromaDB vector store under `.chroma/`.
-3. Each resume chunk is used as a query; the most relevant JD chunks (similarity above 0.30) are retrieved and given to the LLM as context. This is the retrieval step in the RAG pipeline.
-4. The LLM (Groq, llama-3.3-70b-versatile) scores the resume against a fixed rubric and must reply with a single JSON object. The reply is validated against a Pydantic schema; malformed replies are fed back with the parse error and the model retries, up to three attempts.
-5. With a JD, the whole-resume and whole-JD embeddings are compared with cosine similarity and rescaled into a 0-100 match percentage, and a second LLM call writes a grounded gap analysis.
+1. **Parse** — the uploaded file is converted to clean plain text (pypdf for PDF, python-docx for DOCX), with bullets, whitespace, and line-wraps normalized and resume sections detected.
+2. **Embed** — if a job description is pasted, it is split into 600-character chunks (80-char overlap) and embedded locally with `sentence-transformers/all-MiniLM-L6-v2`.
+3. **Retrieve** — chunks are stored in a persistent ChromaDB index (`.chroma/`). The most relevant JD chunks (similarity >= 0.30) are retrieved for each resume chunk and added as LLM context. This is the retrieval step in the RAG pipeline.
+4. **Score** — the LLM (Groq, `llama-3.3-70b-versatile`) evaluates the resume against a fixed rubric and must reply with a single JSON object, validated against a Pydantic schema. Invalid replies are fed back with the error and retried (up to 3 attempts).
+5. **Match** — with a JD, whole-document cosine similarity is rescaled from the 0.30-0.75 band into a 0-100 match percentage, and a second LLM call writes a grounded gap analysis.
 
-## Features
-
-- Scores out of 100 for formatting, clarity, and impact, plus an overall score
-- Keyword match score when a job description is provided (omitted otherwise)
-- 2-4 strengths and 3-5 improvement suggestions, each grounded in the actual resume text
-- Match percentage and semantic similarity against a job description
-- Gap analysis paragraph naming missing or understated requirements
-- PDF and DOCX parsing with bullet, whitespace, and line-wrap normalization
-- Persistent local ChromaDB index; no separate vector database server
-- Embeddings run locally, so only the LLM calls need an API key
-- Dark, wemakedevs-style theme (custom CSS in `theme.py`, plus `.streamlit/config.toml`)
+```
+Upload -> Parse -> Embed -> Retrieve (JD) -> Score -> Report
+```
 
 ## Tech stack
 
-- Streamlit - web UI
-- LangChain + langchain-groq - LLM orchestration
-- Groq - LLM provider, model `llama-3.3-70b-versatile`
-- sentence-transformers - embeddings, model `all-MiniLM-L6-v2` (384-dim)
-- ChromaDB - persistent vector store
-- Pydantic - structured output validation
-- pypdf, python-docx - file parsing
-- python-dotenv - local environment loading
+| Component | Tech |
+|---|---|
+| Web UI | Streamlit 1.61.1 |
+| LLM orchestration | LangChain 1.3.14 + langchain-groq 1.1.3 |
+| LLM | Groq (`llama-3.3-70b-versatile`, temperature 0.2) |
+| Embeddings | sentence-transformers 5.7.0 (`all-MiniLM-L6-v2`, 384-dim, local) |
+| Vector store | ChromaDB 1.5.9 (persistent, `.chroma/`) |
+| Structured output | Pydantic 2.13.4 |
+| Document parsing | pypdf 6.15.0, python-docx 1.2.0 |
+| Environment | python-dotenv 1.2.2 |
+
+Python 3.10+ required.
 
 ## Run locally
 
-Windows:
-
 ```bash
 python -m venv .venv
+
+# Windows
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-macOS / Linux:
-
-```bash
-python -m venv .venv
+# macOS / Linux
 source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and set `GROQ_API_KEY` (a free key from the Groq console). The `.env` file is gitignored and should never be committed.
+Copy `.env.example` to `.env` and set your `GROQ_API_KEY` (free from the [Groq console](https://console.groq.com)). The `.env` file is gitignored.
 
-Then start the app:
+Start the app:
 
 ```bash
 .venv\Scripts\python -m streamlit run app.py
 ```
 
-The embedding model downloads automatically on first run. The local venv in this repo was built with Python 3.14.
+The embedding model downloads automatically on first run. Only the LLM calls need an API key — embeddings run locally.
 
-## Deployment
+## Deploy
 
-The app is ready for Streamlit Community Cloud: push the repo to GitHub, create a new app pointing at `app.py`, and add `GROQ_API_KEY` in the app's Secrets settings. `llm.py` checks Streamlit secrets first and falls back to environment variables, so the same code works locally and in the cloud. `.streamlit/config.toml` already sets `headless = true` and disables usage stats.
+The app is ready for Streamlit Community Cloud:
+
+1. Push the repo to GitHub.
+2. Create a new app on [Streamlit Community Cloud](https://streamlit.io/cloud), pointing at `app.py`.
+3. Add `GROQ_API_KEY` in **App Settings -> Secrets**.
+
+`llm.py` checks Streamlit secrets first, then environment variables, so the same code works locally and in the cloud.
+
+## Testing
+
+Tests are plain Python scripts (pytest not required). Run each phase:
+
+```bash
+.venv\Scripts\python tests\test_parser.py        # parsing + section detection (offline)
+.venv\Scripts\python tests\test_embeddings.py    # embeddings + chunking (offline)
+.venv\Scripts\python tests\test_retriever.py     # ChromaDB index + retrieval (offline)
+.venv\Scripts\python tests\test_evaluation.py    # live LLM review (needs GROQ_API_KEY)
+.venv\Scripts\python tests\test_match_score.py   # match % + gap analysis (needs GROQ_API_KEY)
+```
+
+`tests/make_sample_resumes.py` regenerates the sample resume files and requires `reportlab` (dev-only, not in `requirements.txt`).
 
 ## Project structure
 
 ```
-app.py            Streamlit UI and orchestration
-resume_parser.py  PDF/DOCX to clean text plus section detection
+app.py            Streamlit UI + orchestration
+resume_parser.py  PDF/DOCX -> clean text + section detection
 embeddings.py     Chunking, embeddings, cosine similarity
-retriever.py      ChromaDB persistent index and top-k retrieval
-evaluation.py     Rubric prompt, Pydantic validation, JSON retry loop
-match_score.py    Match percentage and LLM gap analysis
-llm.py            API key resolution and Groq client factory
-config.py         Model names and tunable settings
-theme.py          Dark theme CSS and HTML helpers
+retriever.py      ChromaDB persistent index + top-k retrieval
+evaluation.py     Rubric prompt, Pydantic validation, retry loop
+match_score.py    Match percentage + gap analysis
+llm.py            API key resolution + Groq client
+config.py         Model names + settings (chunk size, top-k, ...)
+theme.py          Dark UI theme + HTML helpers
 tests/            Phase-by-phase test scripts
-sample_resumes/   Sample PDF/DOCX resume for testing
+sample_resumes/   Sample PDF/DOCX resume
 ```
-
-## Testing
-
-The tests are plain Python scripts with `test_` functions (pytest is not required). Run each phase directly:
-
-```bash
-.venv\Scripts\python tests\test_parser.py        # Phase 1: parsing and section detection
-.venv\Scripts\python tests\test_embeddings.py    # Phase 2: embeddings and chunking
-.venv\Scripts\python tests\test_retriever.py     # Phase 3: ChromaDB index and retrieval
-.venv\Scripts\python tests\test_evaluation.py    # Phase 4: live LLM review (needs GROQ_API_KEY)
-.venv\Scripts\python tests\test_match_score.py   # Phase 5-6: match % and gap analysis (needs GROQ_API_KEY)
-```
-
-The first three phases are offline. Phases 4 and 5-6 make live Groq API calls, so they require `GROQ_API_KEY` in `.env`. Note that `test_retriever.py` writes to the local `.chroma/` index. `tests/make_sample_resumes.py` regenerates the sample resume files and needs `reportlab`, which is deliberately not in `requirements.txt`.
 
 ## Roadmap
 
