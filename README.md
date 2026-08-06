@@ -1,64 +1,39 @@
 # Resume Review Agent
 
-AI resume review, powered by RAG — upload a resume, get a rubric-based score and actionable feedback in ~30 seconds.
+A simple web app that reviews resumes. Upload a PDF or DOCX, optionally paste a job description, and it gives you scores (formatting, clarity, impact, keyword match) plus specific suggestions on what to improve. Runs in about 30 seconds.
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
-[![LLM](https://img.shields.io/badge/LLM-Groq-orange)](https://groq.com)
-
-A free web app that analyzes resumes (PDF or DOCX) against a rubric and — optionally — a target job description.
-
-## Features
-
-- **Rubric-based scoring** — structured 0–100 scores for formatting, clarity, and impact, plus an overall score.
-- **Job-match analysis** — when a job description is provided, get a match percentage, semantic similarity score, and keyword match, with a grounded gap-analysis paragraph.
-- **Retrieval-augmented evaluation** — relevant JD sections are retrieved from a vector store and cited in the review, reducing hallucination.
-- **Specific, actionable feedback** — targeted improvement suggestions and a strengths list, not generic advice.
-- **Fast and free** — ~30-second turnarounds on a hosted Groq LLM; local embeddings need no API key.
-- **Validated structured output** — Pydantic-typed LLM output, validated and retried on failure.
+Built with Streamlit, LangChain, Groq, and ChromaDB.
 
 ## How it works
 
-The app parses the uploaded document into plain text, chunks and embeds it, then (optionally) retrieves only the job-description chunks most relevant to each resume section. The LLM reviews each section against a scoring rubric and emits a structured, validated JSON report.
+1. The resume is parsed into plain text (PDF or DOCX).
+2. If you provide a job description, its content is embedded and the most relevant sections are retrieved.
+3. The LLM scores each part of your resume against a rubric and returns a structured report (validated with Pydantic).
 
 ```
-Upload → Parse → Chunk → Embed → Retrieve (JD) → Rubric-Score → Validate → Report
+Upload → Parse → Embed → Retrieve (JD) → Score → Report
 ```
 
-## Screenshot
+## Features
 
-![Demo](docs/screenshot.png)
+- Score your resume 0-100 on formatting, clarity, and impact
+- Optional job-description matching: match percentage, semantic similarity, and a gap analysis
+- Specific, actionable suggestions (not generic advice)
+- All free — Groq for the LLM, local embeddings, no API key needed for the model
 
-*Add a screenshot of the results view here.*
-
-## Built with
-
-| Layer | Tech |
-|---|---|
-| UI | Streamlit |
-| Orchestration / LLM | LangChain + Groq (`llama-3.3-70b-versatile`) |
-| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (local, no API key) |
-| Retrieval | ChromaDB vector store |
-| Document parsing | `pypdf`, `python-docx` |
-| Structured output | Pydantic with validation + retry |
-| Config / secrets | `python-dotenv`, Streamlit secrets |
-
-## Getting started (local)
+## Run locally
 
 ```bash
 python -m venv .venv
-
-# Windows
+# Windows:
 .venv\Scripts\Activate.ps1
-
-# macOS / Linux
+# macOS/Linux:
 source .venv/bin/activate
 
 pip install -r requirements.txt
 ```
 
-1. Copy `.env.example` to `.env` and add your `GROQ_API_KEY`.
-2. Launch the app:
+Copy `.env.example` to `.env` and add your `GROQ_API_KEY`, then run:
 
 ```bash
 .venv\Scripts\python -m streamlit run app.py
@@ -66,36 +41,29 @@ pip install -r requirements.txt
 
 The embedding model (`all-MiniLM-L6-v2`) downloads automatically on first run.
 
-## Deployment
+## Deploy
 
-1. Push the repo to GitHub.
-2. On [Streamlit Community Cloud](https://streamlit.io/cloud), click **New app**, select the repo, and set the main file to `app.py`.
-3. Add the `GROQ_API_KEY` secret under **Advanced settings → Secrets**.
-4. Deploy. The embedding model is bundled automatically at deploy time.
+Push to GitHub, then create a new app on [Streamlit Community Cloud](https://streamlit.io/cloud) pointing at `app.py`. Add `GROQ_API_KEY` under **Advanced settings → Secrets**.
 
 ## Project structure
 
 ```
-app.py                 Streamlit entry point (UI, session state, orchestration)
-resume_parser.py       PDF / DOCX → plain text extraction
-embeddings.py          Text chunking + local embedding model
-retriever.py           ChromaDB vector store and JD retrieval
-evaluation.py          Rubric prompt, structured scoring, output validation
-match_score.py         Job-match %, semantic similarity, gap analysis
-llm.py                 LangChain + Groq client wrapper
-config.py              Settings, model names, and constants
-theme.py               UI styling helpers
-tests/                 Per-phase pytest-style verification scripts
-sample_resumes/        Sample resumes of varying quality for testing
+app.py            Streamlit UI + orchestration
+resume_parser.py  PDF/DOCX → text
+embeddings.py     Text chunking + embeddings
+retriever.py      ChromaDB vector store
+evaluation.py     Scoring prompt + structured output
+match_score.py    JD match % + gap analysis
+llm.py            Groq client
+config.py         Settings
+theme.py          UI styling
+tests/            Per-phase test scripts
+sample_resumes/   Sample resumes for testing
 ```
-
-## Evaluation
-
-The project ships with sample resumes of varying quality to sanity-check that scoring ranks them in the expected order, and Phase 9 verifies consistency by scoring the same resume repeatedly and confirming the results are stable.
 
 ## Roadmap
 
-- **ATS compatibility checker** — flag formatting that confuses applicant tracking systems.
-- **Cover-letter generator** — draft a tailored cover letter from the same match analysis.
-- **Multi-resume comparison** — compare candidates side by side against one JD.
-- **Feedback memory** — let users track score improvements across revisions.
+- ATS compatibility checker
+- Cover-letter generator
+- Multi-resume comparison
+- Track score improvements across revisions
