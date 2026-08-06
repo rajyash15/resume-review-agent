@@ -1,64 +1,71 @@
 # Resume Review Agent
 
-A simple web app that reviews resumes. Upload a PDF or DOCX, optionally paste a job description, and it gives you scores (formatting, clarity, impact, keyword match) plus specific suggestions on what to improve. Runs in about 30 seconds.
+Web app that analyzes resumes and gives actionable feedback.
 
-Built with Streamlit, LangChain, Groq, and ChromaDB.
+Upload a resume (PDF or DOCX). Optionally add a job description. The app scores your resume on formatting, clarity, and impact, and returns a list of specific things to improve. Runs in about 30 seconds.
+
+## What it does
+
+- Scores your resume out of 100 (formatting, clarity, impact)
+- With a job description: match percentage, semantic similarity, and a gap analysis
+- Returns specific, actionable suggestions for each section
+- Lists your strengths
 
 ## How it works
 
-1. The resume is parsed into plain text (PDF or DOCX).
-2. If you provide a job description, its content is embedded and the most relevant sections are retrieved.
-3. The LLM scores each part of your resume against a rubric and returns a structured report (validated with Pydantic).
+1. The uploaded file is parsed into plain text.
+2. If a job description is given, it is chunked, embedded, and stored in a vector store.
+3. The most relevant job-description sections are retrieved for each part of the resume.
+4. An LLM scores the resume against a rubric and returns structured JSON, validated with Pydantic.
 
-```
-Upload → Parse → Embed → Retrieve (JD) → Score → Report
-```
+## Tech stack
 
-## Features
-
-- Score your resume 0-100 on formatting, clarity, and impact
-- Optional job-description matching: match percentage, semantic similarity, and a gap analysis
-- Specific, actionable suggestions (not generic advice)
-- All free — Groq for the LLM, local embeddings, no API key needed for the model
+- Streamlit - web UI
+- LangChain - orchestration and LLM calls
+- Groq - LLM provider
+- sentence-transformers (all-MiniLM-L6-v2) - local embeddings
+- ChromaDB - vector store
+- Pydantic - structured output validation
+- pypdf / python-docx - file parsing
 
 ## Run locally
 
 ```bash
 python -m venv .venv
-# Windows:
+# Windows
 .venv\Scripts\Activate.ps1
-# macOS/Linux:
+# macOS / Linux
 source .venv/bin/activate
 
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and add your `GROQ_API_KEY`, then run:
+Copy `.env.example` to `.env` and set your `GROQ_API_KEY`. Then start the app:
 
 ```bash
 .venv\Scripts\python -m streamlit run app.py
 ```
 
-The embedding model (`all-MiniLM-L6-v2`) downloads automatically on first run.
+The embedding model downloads automatically on the first run.
 
 ## Deploy
 
-Push to GitHub, then create a new app on [Streamlit Community Cloud](https://streamlit.io/cloud) pointing at `app.py`. Add `GROQ_API_KEY` under **Advanced settings → Secrets**.
+Push the repo to GitHub, then create a new app on Streamlit Community Cloud using `app.py` as the main file. Add `GROQ_API_KEY` in the app's secrets settings.
 
-## Project structure
+## Project layout
 
 ```
-app.py            Streamlit UI + orchestration
-resume_parser.py  PDF/DOCX → text
-embeddings.py     Text chunking + embeddings
-retriever.py      ChromaDB vector store
-evaluation.py     Scoring prompt + structured output
-match_score.py    JD match % + gap analysis
+app.py            Streamlit UI and orchestration
+resume_parser.py  PDF / DOCX to plain text
+embeddings.py     Text chunking and embeddings
+retriever.py      ChromaDB vector store and retrieval
+evaluation.py     Scoring prompt and structured output
+match_score.py    Job match and gap analysis
 llm.py            Groq client
-config.py         Settings
+config.py         App settings
 theme.py          UI styling
-tests/            Per-phase test scripts
-sample_resumes/   Sample resumes for testing
+tests/            Test scripts per phase
+sample_resumes/   Sample resumes
 ```
 
 ## Roadmap
@@ -66,4 +73,4 @@ sample_resumes/   Sample resumes for testing
 - ATS compatibility checker
 - Cover-letter generator
 - Multi-resume comparison
-- Track score improvements across revisions
+- Score history tracking
