@@ -1,4 +1,4 @@
-# Resume Review Agent
+# AI Resume Review Agent
 
 A free web app that reviews resumes. Upload a resume (PDF or DOCX), optionally paste a job description, and get rubric-based scores, strengths, and specific improvement suggestions — in about 30 seconds.
 
